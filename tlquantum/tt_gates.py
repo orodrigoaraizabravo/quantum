@@ -1,6 +1,6 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import randn, cos, sin, float32, complex64, exp
+from torch import randn, cos, sin, float32, complex64, exp, sqrt, sinc
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
@@ -15,7 +15,10 @@ from .tt_sum import tt_matrix_sum
 
 # License: BSD 3 clause
 
-
+class test_function(): 
+    def __init__(): 
+        print('I am here!')
+    
 class Unitary(Module):
     """A unitary for all qubits in a TTCircuit, using tensor ring tensors
     with PyTorch Autograd support.
@@ -114,7 +117,7 @@ class UnaryGatesUnitary(Unitary):
             self._set_gates([RotZ(dtype=dtype, device=device) for i in range(self.nqubits)])
         else:
             raise IndexError('UnaryGatesUnitary has no rotation axis {}.\n'
-                             'UnaryGatesUnitary has 3 rotation axes: x, y, and z. The y-axis is default.'.format(index))
+                             'UnaryGatesUnitary has 3 rotation axes: x, y, and z. The y-axis is default.'.format(axis))
 
 
 def build_binary_gates_unitary(nqubits, q2gate, parity, random_initialization=True, dtype=complex64):
@@ -660,3 +663,106 @@ def exp_pauli_x(dtype=complex64, device=None):
     tt-tensor core, sin(theta) X-rotation component.
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
+
+class StarEvolutionSingleOutput(Unitary):
+    """
+    Ex) Below is a picture of a two-layers perceptron. If we want to evolve
+    the bottom output by the input layer we do
+    O\----O      nqubits_total=5,   layers = [3,2]
+    O/-/--O      layer_in = 0   layer_out = 1, indx_out = 1
+    O/           MPO=[wII(0), wII(None), WII(None), Identity, WII(1)]
+    """
+    def __init__(self, nqubits_total, ncontraq, \
+                layers, layer_in, layer_out, indx_out, contrsets=None, device=None):
+        super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
+        nq_top = sum(layers[0:layer_in])
+        nq_down = sum(layers[layer_out+1:])
+        Win, Wout= layers[layer_in], layers[layer_out] #width of input layer and output layer
+        
+        layer =[star_wII(device=device, end=0)]+[star_wII(device=device, end=None)]*(Win-1)
+        layer+=[IDENTITY(device=device)]*indx_out+[star_wII(device=device, end=1)]
+        layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
+        gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device)]*nq_down
+        self._set_gates(gates)
+
+class star_wII(Module): 
+    '''This class generates an approximation of the unitary evolution in MPO
+    form for the star model. The star model consist of a number of input qubits
+    interacting with a central output qubit via Ising type interaction: 
+        H = Sum_{input}J_{input}S^z_{input}S^z_{output}+DS^z_{output}+OS^x_{output}
+    This Hamiltonian can be efficiently written as an MPO of bond dimension 2. 
+    The Approximation implemented here is W_II approx to exp(t H) from MPO 
+    parts (A, B, C, D). The W_II approximation first appeared in `zaletel2015`.
+    Here, the cores of the W_II approx can be computed algebraicaly, and we use that
+    to hard-code them since tensorly lacks a matrix exponentiation function. 
+    Parameter: 
+    --------------------------------------------------------------------------
+    dt (float): time of evolution. 
+    device (string, None): device to run the simulation on
+    end (int or None): this label tells us what core we need to prepare. 
+    If end=0, the qubit is the first input qubit and so the core
+    has size (1,2,2,2). 
+    If end=None, the qubit is an input qubit but not the first one. 
+    Thus, we can think of this as a bulk-qubit and the core is 
+    of size (2,2,2,2). 
+    If end=1, the qubit is the output qubit with core size (2,2,2,1). 
+    Note that this core contains nontrivial terms coming from the 
+    commutation of [Sx, Sz].'''
+            
+    def __init__(self, dt = 0.1, device=None, end=0): 
+        '''Initiallize the module and create a core. Note that if the qubit
+        is an input qubit, we only have one tunabble parameter J corresponding 
+        to how the input qubit in question interacts with the output.'''
+        super().__init__()
+        self.end, self.device = end, device
+        self.dt = tl.tensor([dt], device=device)
+        if end==0:
+            self.J = Parameter(randn(1, device=device))
+            self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
+            self.prepare_core()
+        elif end is None:
+            self.J = Parameter(randn(1, device=device))
+            self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
+            self.prepare_core()
+        elif end==1: 
+            self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
+            self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
+            self.prepare_core()
+        else: raise ValueError('End {} not supported'.format(self.end)) 
+        
+    def prepare_core(self):
+        '''This function prepares the cores. The cores for the inputs are easy to
+        prepare as they are diagonal.'''
+        t=sqrt(self.dt)
+        if self.end==0: #(1, JSz)
+            self.core[0,0,0,0] = self.core[0,1,1,0] = 1
+            self.core[0,0,0,1], self.core[0,1,1,1] = t*self.J, -t*self.J
+        elif self.end is None: #((1,JSz),(0,1))
+            self.core[0,0,0,0]=self.core[0,1,1,0] = 1
+            self.core[1,0,0,1]=self.core[1,1,1,1] = 1
+            self.core[0,0,0,0], self.core[0,1,1,0]= t*self.J, -t*self.J
+        elif self.end == 1: #((WD),(WB))
+            dt = self.dt
+            r = sqrt(self.h[0]**2+self.h[1]**2)
+            ct,st = self.h[0]/r, self.h[1]/r
+            crt, srt, sc = cos(r*dt), sin(r*dt), sinc(r*dt)
+            #WD
+            self.core[0,0,0,0] = crt+1j*st*srt
+            self.core[0,1,1,0] = crt-1j*st*srt
+            self.core[0,0,1,0]= self.core[0,1,0,0] = 1j*ct*srt
+            #WB
+            self.core[1,0,0,0]=t*(1j*crt*st**2-srt*st**3+1j*sc*ct**2-crt*ct**2*st)
+            self.core[1,1,1,0] =t*(-1j*crt*st**2-srt*st**3-1j*sc*ct**2-crt*ct**2*st)
+            self.core[1,0,1,0] = self.core[1,1,0,0] = 1j*t*ct*st*(crt-sc)
+        else: raise ValueError('End {} not supported'.format(self.end)) 
+        return
+
+    def forward(self): 
+        """Once the core is prepared in the __init__ function, this function pushes it 
+        forward. The parameters of the core are updated every epoch 
+        through backprop via PyTorch Autograd.
+        Returns
+        -------
+        Gate tensor for general forward pass.
+        """
+        return self.core
