@@ -736,11 +736,11 @@ class star_wII(Module):
         t=sqrt(self.dt)
         if self.end==0: #(1, 1j*t*JSz)
             self.core[0,0,0,0] = self.core[0,1,1,0] = 1
-            self.core[0,0,0,1], self.core[0,1,1,1]  = t*self.J,-t*self.J
+            self.core[0,0,0,1], self.core[0,1,1,1]  = 1j*t*self.J,-1j*t*self.J
         elif self.end is None: #((1,1j*t*J*Sz),(0,1))
             self.core[0,0,0,0]=self.core[0,1,1,0] = 1
             self.core[1,0,0,1]=self.core[1,1,1,1] = 1
-            self.core[0,0,0,1],self.core[0,1,1,1] = t*self.J,-t*self.J
+            self.core[0,0,0,1],self.core[0,1,1,1] = 1j*t*self.J,-1j*t*self.J
         elif self.end == 1: #((WD),(WB))
             r = sqrt(self.h[0]**2+self.h[1]**2)
             ct,st = self.h[0]/r, self.h[1]/r
