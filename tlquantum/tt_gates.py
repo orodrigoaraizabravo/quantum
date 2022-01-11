@@ -673,14 +673,14 @@ class StarEvolutionSingleOutput(Unitary):
     O/           MPO=[wII(0), wII(None), WII(None), Identity, WII(1)]
     """
     def __init__(self, nqubits_total, ncontraq, \
-                layers, layer_in, layer_out, indx_out, contrsets=None, device=None):
+                layers, layer_in, layer_out, indx_out, dt=0.1, contrsets=None, device=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
         nq_top = sum(layers[0:layer_in])
         nq_down = sum(layers[layer_out+1:])
         Win, Wout= layers[layer_in], layers[layer_out] #width of input layer and output layer
         
-        layer =[star_wII(device=device, end=0)]+[star_wII(device=device, end=None)]*(Win-1)
-        layer+=[IDENTITY(device=device)]*indx_out+[star_wII(device=device, end=1)]
+        layer =[star_wII(dt=dt,device=device, end=0)]+[star_wII(dt=dt,device=device, end=None)]*(Win-1)
+        layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1)]
         layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
         self._set_gates(gates)
