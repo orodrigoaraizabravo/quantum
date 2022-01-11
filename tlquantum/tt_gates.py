@@ -682,7 +682,7 @@ class StarEvolutionSingleOutput(Unitary):
         layer =[star_wII(device=device, end=0)]+[star_wII(device=device, end=None)]*(Win-1)
         layer+=[IDENTITY(device=device)]*indx_out+[star_wII(device=device, end=1)]
         layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
-        gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device)]*nq_down
+        gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
         self._set_gates(gates)
 
 class star_wII(Module): 
