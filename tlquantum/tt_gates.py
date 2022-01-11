@@ -736,11 +736,11 @@ class star_wII(Module):
         t=sqrt(self.dt)
         if self.end==0: #(1, JSz)
             self.core[0,0,0,0] = self.core[0,1,1,0] = 1
-            self.core[0,0,0,1], self.core[0,1,1,1] = t*self.J, -t*self.J
+            self.core[0,0,0,1], self.core[0,1,1,1] = 1j*t*self.J, -1j*t*self.J
         elif self.end is None: #((1,JSz),(0,1))
             self.core[0,0,0,0]=self.core[0,1,1,0] = 1
             self.core[1,0,0,1]=self.core[1,1,1,1] = 1
-            self.core[0,0,0,0], self.core[0,1,1,0]= t*self.J, -t*self.J
+            self.core[0,0,0,0], self.core[0,1,1,0]= 1j*t*self.J, -1j*t*self.J
         elif self.end == 1: #((WD),(WB))
             dt = self.dt
             r = sqrt(self.h[0]**2+self.h[1]**2)
@@ -751,8 +751,8 @@ class star_wII(Module):
             self.core[0,1,1,0] = crt-1j*st*srt
             self.core[0,0,1,0]= self.core[0,1,0,0] = 1j*ct*srt
             #WB
-            self.core[1,0,0,0]=t*(1j*crt*st**2-srt*st**3+1j*sc*ct**2-crt*ct**2*st)
-            self.core[1,1,1,0] =t*(-1j*crt*st**2-srt*st**3-1j*sc*ct**2-crt*ct**2*st)
+            self.core[1,0,0,0]=t*(1j*crt*st**2-srt*st**3+1j*sc*ct**2-srt*ct**2*st)
+            self.core[1,1,1,0] =t*(-1j*crt*st**2-srt*st**3-1j*sc*ct**2-srt*ct**2*st)
             self.core[1,0,1,0] = self.core[1,1,0,0] = 1j*t*ct*st*(crt-sc)
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
