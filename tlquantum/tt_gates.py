@@ -16,7 +16,7 @@ from .tt_sum import tt_matrix_sum
 # License: BSD 3 clause
 
 class test_function(): 
-    def __init__(): 
+    def __init__(self): 
         print('I am here!')
     
 class Unitary(Module):
