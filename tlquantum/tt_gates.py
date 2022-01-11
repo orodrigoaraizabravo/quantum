@@ -734,18 +734,17 @@ class star_wII(Module):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
         t=sqrt(self.dt)
-        if self.end==0: #(1, JSz)
+        if self.end==0: #(1, 1j*t*JSz)
             self.core[0,0,0,0] = self.core[0,1,1,0] = 1
             self.core[0,0,0,1], self.core[0,1,1,1] = 1j*t*self.J, -1j*t*self.J
-        elif self.end is None: #((1,JSz),(0,1))
+        elif self.end is None: #((1,1j*t*J*Sz),(0,1))
             self.core[0,0,0,0]=self.core[0,1,1,0] = 1
             self.core[1,0,0,1]=self.core[1,1,1,1] = 1
-            self.core[0,0,0,0], self.core[0,1,1,0]= 1j*t*self.J, -1j*t*self.J
+            self.core[0,0,0,1], self.core[0,1,1,1]= 1j*t*self.J, -1j*t*self.J
         elif self.end == 1: #((WD),(WB))
-            dt = self.dt
             r = sqrt(self.h[0]**2+self.h[1]**2)
             ct,st = self.h[0]/r, self.h[1]/r
-            crt, srt, sc = cos(r*dt), sin(r*dt), sinc(r*dt)
+            crt, srt, sc = cos(r*self.dt), sin(r*self.dt), sinc(r*self.dt)
             #WD
             self.core[0,0,0,0] = crt+1j*st*srt
             self.core[0,1,1,0] = crt-1j*st*srt
