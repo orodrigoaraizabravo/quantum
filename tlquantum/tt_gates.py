@@ -743,8 +743,8 @@ class star_wII(Module):
             self.core[0,0,0,1],self.core[0,1,1,1] = 1j*t*self.J,-1j*t*self.J
         elif self.end == 1: #((WD),(WB))
             r = sqrt(self.h[0]**2+self.h[1]**2)
-            ct = 0 if r<1e-8 else self.h[0]/r
-            st = 0 if r<1e-8 else self.h[1]/r
+            ct = 0*self.h[0] if r<1e-8 else self.h[0]/r
+            st = 0*self.h[1] if r<1e-8 else self.h[1]/r
             crt, srt, sc = cos(r*self.dt), sin(r*self.dt), sinc(r*self.dt)
             #WD
             self.core[0,0,0,0] = crt+1j*st*srt
