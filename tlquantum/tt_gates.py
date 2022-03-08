@@ -683,7 +683,7 @@ class StarEvolutionSingleOutput(Unitary):
             layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1)]
             layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         else:
-            layer =[star_wII(dt=dt,device=device, end=0, j0=Js[0])]+[star_wII(dt=dt,device=device, end=None, j0=Js[i]) for i in range(1,Win-1)]
+            layer =[star_wII(dt=dt,device=device, end=0, j0=Js[0])]+[star_wII(dt=dt,device=device, end=None, j0=Js[i]) for i in range(1,Win)]
             layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, h0=h)]
             layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
