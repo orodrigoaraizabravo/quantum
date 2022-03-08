@@ -723,13 +723,13 @@ class star_wII(Module):
         if end==0:
             if J is None:
                 self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(J.to(device), device=device)
+            else: self.J = Parameter(J.to(device))
             self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end is None:
             if J is None:
                 self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(J.to(device), device=device)
+            else: self.J = Parameter(J.to(device))
             self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end==1: 
