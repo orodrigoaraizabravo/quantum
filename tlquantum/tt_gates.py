@@ -683,8 +683,8 @@ class StarEvolutionSingleOutput(Unitary):
             layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1)]
             layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         else:
-            layer =[star_wII(dt=dt,device=device, end=0, J=Js[0])]+[star_wII(dt=dt,device=device, end=None, J=Js[i]) for i in range(1,Win-1)]
-            layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, h=h)]
+            layer =[star_wII(dt=dt,device=device, end=0, j=Js[0])]+[star_wII(dt=dt,device=device, end=None, j=Js[i]) for i in range(1,Win-1)]
+            layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, hf=h)]
             layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
         self._set_gates(gates)
@@ -713,7 +713,7 @@ class star_wII(Module):
     Note that this core contains nontrivial terms coming from the 
     commutation of [Sx, Sz].'''
             
-    def __init__(self, dt = 0.1, device=None, end=0, J=None, h=None): 
+    def __init__(self, dt = 0.1, device=None, end=0, j=None, hf=None): 
         '''Initiallize the module and create a core. Note that if the qubit
         is an input qubit, we only have one tunabble parameter J corresponding 
         to how the input qubit in question interacts with the output.'''
@@ -721,21 +721,21 @@ class star_wII(Module):
         self.end, self.device = end, device
         self.dt = tl.tensor([dt], device=device)
         if end==0:
-            if J is None:
+            if j is None:
                 self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(J.to(device))
+            else: j.to(device); self.J = Parameter(j)
             self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end is None:
-            if J is None:
+            if j is None:
                 self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(J.to(device))
+            else: j.to(device); self.J = Parameter(j)
             self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end==1: 
-            if h is None:
+            if hf is None:
                 self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
-            else: self.h=Parameter(h.to(device))
+            else: hf.to(device); self.h=Parameter(hf)
             self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             self.prepare_core()
         else: raise ValueError('End {} not supported'.format(self.end)) 
