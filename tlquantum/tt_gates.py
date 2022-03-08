@@ -743,7 +743,7 @@ class star_wII(Module):
     def prepare_core(self):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
-        t=exp(tl.tensor([-1j*pi/4]), dtype=complex64)*sqrt(self.dt)
+        t=exp(tl.tensor([-1j*pi/4], dtype=complex64))*sqrt(self.dt)
         if self.end==0: #(1, 1j*t*JSz)
             self.core[0,0,0,0] = self.core[0,1,1,0] = 1
             self.core[0,0,0,1], self.core[0,1,1,1]  = t*self.J,-t*self.J
