@@ -723,19 +723,19 @@ class star_wII(Module):
         if end==0:
             if j is None:
                 self.J = Parameter(randn(1, device=device))
-            else: j.to(device); self.J = Parameter(j)
+            else: self.J = Parameter(j)
             self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end is None:
             if j is None:
                 self.J = Parameter(randn(1, device=device))
-            else: j.to(device); self.J = Parameter(j)
+            else: self.J = Parameter(j)
             self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end==1: 
             if hf is None:
                 self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
-            else: hf.to(device); self.h=Parameter(hf)
+            else: self.h=Parameter(hf)
             self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             self.prepare_core()
         else: raise ValueError('End {} not supported'.format(self.end)) 
