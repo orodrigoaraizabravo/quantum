@@ -720,8 +720,8 @@ class star_wII(Module):
         super().__init__()
         self.end, self.device = end, device
         self.b  = tl.tensor([[0, 0], [1, 0]], dtype=complex64, device=device)
-        self.I2 = tl.tensor(2, dtype=complex64, device=device)
-        self.I4 = tl.tensor(4, dtype=complex64, device=device)
+        self.I2 = tl.eye(2, dtype=complex64, device=device)
+        self.I4 = tl.eye(4, dtype=complex64, device=device)
         self.Bc = tl.kron(self.I2, self.b)
         self.Br = tl.kron(self.b,self.I2)
         self.Brc = tl.kron(self.b,self.b)
@@ -759,8 +759,8 @@ class star_wII(Module):
             Cm=tl.zeros([2,2], dtype=complex64, device=self.device)
             Bm=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
         
-        w=matrix_exp(kron(self.Brc,self.I2)+stau*kron(self.Br, Bm)\
-                     +stau*kron(self.Bc, Cm)+tau*kron(self.I4, Dm)).reshape([2]*6)
+        w=matrix_exp(tl.kron(self.Brc,self.I2)+stau*tl.kron(self.Br, Bm)\
+                     +stau*tl.kron(self.Bc, Cm)+tau*tl.kron(self.I4, Dm)).reshape([2]*6)
         
         if self.end==0: #(1, 1j*t*JSz)=
             self.core[0,:,:,0] = self.I2
