@@ -678,10 +678,14 @@ class StarEvolutionSingleOutput(Unitary):
         nq_top = sum(layers[0:layer_in])
         nq_down = sum(layers[layer_out+1:])
         Win, Wout= layers[layer_in], layers[layer_out] #width of input layer and output layer
-        
-        layer =[star_wII(dt=dt,device=device, end=0, J=Js[0])]+[star_wII(dt=dt,device=device, end=None, J=Js[i]) for i in range(1,Win-1)]
-        layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, h=h)]
-        layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
+        if Js is None and h is None:
+            layer =[star_wII(dt=dt,device=device, end=0)]+[star_wII(dt=dt,device=device, end=None) for i in range(1,Win-1)]
+            layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1)]
+            layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
+        else:
+            layer =[star_wII(dt=dt,device=device, end=0, J=Js[0])]+[star_wII(dt=dt,device=device, end=None, J=Js[i]) for i in range(1,Win-1)]
+            layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, h=h)]
+            layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
         self._set_gates(gates)
 
