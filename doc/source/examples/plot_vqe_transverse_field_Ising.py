@@ -79,7 +79,7 @@ SO4_01 = tlq.BinaryGatesUnitary(nqubits, ncontraq, tlq.so4(2,3, device=device, d
 unitaries = [RotY, SO4_01, RotY, CZ0, RotX]
 
 # %% or build circuit block by block
-repeat_block, unitaries_automatic = 3, []
+repeat_block, unitaries_automatic = 5, []
 for i in range(repeat_block):
     unitaries_automatic += unitaries
 

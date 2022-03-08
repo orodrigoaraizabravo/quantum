@@ -4,7 +4,7 @@ from torch import randn, cos, sin, float32, complex64, exp, sqrt, sinc
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
-
+from numpy import pi
 from .tt_operators import identity
 from .tt_precontraction import qubits_contract, _get_contrsets
 from .tt_sum import tt_matrix_sum
@@ -673,14 +673,14 @@ class StarEvolutionSingleOutput(Unitary):
     O/           MPO=[wII(0), wII(None), WII(None), Identity, WII(1)]
     """
     def __init__(self, nqubits_total, ncontraq, \
-                layers, layer_in, layer_out, indx_out, dt=0.1, contrsets=None, device=None):
+                layers, layer_in, layer_out, indx_out, dt=0.1, contrsets=None, device=None, Js=None, h=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
         nq_top = sum(layers[0:layer_in])
         nq_down = sum(layers[layer_out+1:])
         Win, Wout= layers[layer_in], layers[layer_out] #width of input layer and output layer
         
-        layer =[star_wII(dt=dt,device=device, end=0)]+[star_wII(dt=dt,device=device, end=None)]*(Win-1)
-        layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1)]
+        layer =[star_wII(dt=dt,device=device, end=0, J=Js[0])]+[star_wII(dt=dt,device=device, end=None, J=Js[i]) for i in range(1,Win-1)]
+        layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, h=h)]
         layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
         gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
         self._set_gates(gates)
@@ -709,7 +709,7 @@ class star_wII(Module):
     Note that this core contains nontrivial terms coming from the 
     commutation of [Sx, Sz].'''
             
-    def __init__(self, dt = 0.1, device=None, end=0): 
+    def __init__(self, dt = 0.1, device=None, end=0, J=None, h=None): 
         '''Initiallize the module and create a core. Note that if the qubit
         is an input qubit, we only have one tunabble parameter J corresponding 
         to how the input qubit in question interacts with the output.'''
@@ -717,15 +717,21 @@ class star_wII(Module):
         self.end, self.device = end, device
         self.dt = tl.tensor([dt], device=device)
         if end==0:
-            self.J = Parameter(randn(1, device=device))
+            if J is None:
+                self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(J, device=device)
             self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end is None:
-            self.J = Parameter(randn(1, device=device))
+            if J is None:
+                self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(J, device=device)
             self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
             self.prepare_core()
         elif end==1: 
-            self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
+            if h is None:
+                self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
+            else: self.h=Parameter(h, device=device)
             self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             self.prepare_core()
         else: raise ValueError('End {} not supported'.format(self.end)) 
@@ -733,14 +739,14 @@ class star_wII(Module):
     def prepare_core(self):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
-        t=sqrt(self.dt)
+        t=exp(-1j*pi/4)*sqrt(self.dt)
         if self.end==0: #(1, 1j*t*JSz)
             self.core[0,0,0,0] = self.core[0,1,1,0] = 1
-            self.core[0,0,0,1], self.core[0,1,1,1]  = 1j*t*self.J,-1j*t*self.J
+            self.core[0,0,0,1], self.core[0,1,1,1]  = t*self.J,-t*self.J
         elif self.end is None: #((1,1j*t*J*Sz),(0,1))
             self.core[0,0,0,0]=self.core[0,1,1,0] = 1
             self.core[1,0,0,1]=self.core[1,1,1,1] = 1
-            self.core[0,0,0,1],self.core[0,1,1,1] = 1j*t*self.J,-1j*t*self.J
+            self.core[0,0,0,1],self.core[0,1,1,1] = t*self.J,-t*self.J
         elif self.end == 1: #((WD),(WB))
             r = sqrt((self.h[0].clone())**2+(self.h[1].clone())**2)
             #print(r)
@@ -749,12 +755,12 @@ class star_wII(Module):
             crt, srt, sc = cos(r*self.dt), sin(r*self.dt), sinc(r*self.dt)
             #WD
             self.core[0,0,0,0] = crt+1j*st*srt
-            self.core[0,1,1,0] = crt-1j*st*srt
+            self.core[0,1,1,0] = crt+1j*st*srt
             self.core[0,0,1,0]=self.core[0,1,0,0] = 1j*ct*srt
             #WB
-            self.core[1,0,0,0]=t*(1j*crt*st**2-srt*st**3+1j*sc*ct**2-srt*ct**2*st)
-            self.core[1,1,1,0] =t*(-1j*crt*st**2-srt*st**3-1j*sc*ct**2-srt*ct**2*st)
-            self.core[1,0,1,0] =self.core[1,1,0,0]=1j*t*ct*st*(crt-sc)
+            self.core[1,0,0,0]=t*(st*(srt+crt)-1j*ct**2*sc)
+            self.core[1,1,1,0] =t*(st*(srt-crt)+1j*ct**2*sc)
+            self.core[1,0,1,0] =self.core[1,1,0,0]=t*ct*st*(crt-1j*sc)
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
 
