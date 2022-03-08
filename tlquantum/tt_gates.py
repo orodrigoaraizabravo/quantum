@@ -1,6 +1,6 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import randn, cos, sin, float32, complex64, exp, sqrt, sinc
+from torch import randn, cos, sin, float32, complex64, exp, sqrt, sinc, kron, matrix_exp
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
@@ -719,7 +719,14 @@ class star_wII(Module):
         to how the input qubit in question interacts with the output.'''
         super().__init__()
         self.end, self.device = end, device
+        self.b  = tl.tensor([[0, 0], [1, 0]], dtype=complex64, device=device)
+        self.I2 = tl.tensor(2, dtype=complex64, device=device)
+        self.I4 = tl.tensor(4, dtype=complex64, device=device)
+        self.Bc = tl.kron(self.I2, self.b)
+        self.Br = tl.kron(self.b,self.I2)
+        self.Brc = tl.kron(self.b,self.b)
         self.dt = tl.tensor([dt], device=device)
+        
         if end==0:
             if j0 is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(j0)
@@ -741,29 +748,32 @@ class star_wII(Module):
     def prepare_core(self):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
-        t=exp(tl.tensor([-1j*pi/4], dtype=complex64))*sqrt(self.dt)
-        if self.end==0: #(1, 1j*t*JSz)
-            self.core[0,0,0,0] = self.core[0,1,1,0] = 1
-            self.core[0,0,0,1], self.core[0,1,1,1]  = t*self.J,-t*self.J
+        tau = -1j*self.dt
+        stau= sqrt(tau)
+        if self.end !=1:
+            Dm=tl.zeros([2,2], dtype=complex64, device=self.device)
+            Bm=Dm
+            Cm=self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+        else: 
+            Dm=tl.tensor([[self.h[0],self.h[1]], [self.h[1], -self.h[0]]], dtype=complex64, device=self.device)
+            Cm=tl.zeros([2,2], dtype=complex64, device=self.device)
+            Bm=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+        
+        w=matrix_exp(kron(self.Brc,self.I2)+stau*kron(self.Br, Bm)\
+                     +stau*kron(self.Bc, Cm)+tau*kron(self.I4, Dm)).reshape([2]*6)
+        
+        if self.end==0: #(1, 1j*t*JSz)=
+            self.core[0,:,:,0] = self.I2
+            self.core[0,:,:,1] = w[0, 1, :, 0, 0, :]
         elif self.end is None: #((1,1j*t*J*Sz),(0,1))
-            self.core[0,0,0,0]=self.core[0,1,1,0] = 1
-            self.core[1,0,0,1]=self.core[1,1,1,1] = 1
-            self.core[0,0,0,1],self.core[0,1,1,1] = t*self.J,-t*self.J
+            self.core[0,:,:,0]=self.I2
+            self.core[0,:,:,1]=w[0, 1, :, 0, 0, :]
+            self.core[1,:,:,1]=w[1, 1, :, 0, 0, :]
+
         elif self.end == 1: #((WD),(WB))
-            r = sqrt((self.h[0].clone())**2+(self.h[1].clone())**2)
-            #print(r)
-            ct = self.h[0].clone()/r
-            st = self.h[1].clone()/r
-            crt, srt, sc = cos(r*self.dt), sin(r*self.dt), sinc(r*self.dt)
-            #WD
-            self.core[0,0,0,0] = crt+1j*st*srt
-            self.core[0,1,1,0] = crt-1j*st*srt
-            self.core[0,0,1,0]=self.core[0,1,0,0] = 1j*ct*srt
-            #WB
-            self.core[1,0,0,0] =t*(st*(srt+crt)-1j*ct**2*sc)
-            self.core[1,1,1,0] =t.conj()*(st*(srt+crt)+1j*ct**2*sc)
-            self.core[1,0,1,0] =t*ct*st*(crt-1j*sc)
-            self.core[1,1,0,0] =-t.conj()*ct*st*(crt+1j*sc)
+            self.core[0,:,:,0]= w[0, 0, :, 0, 0, :]
+            self.core[1,:,:,0]= w[1, 0, :, 0, 0, :]
+    
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
 
