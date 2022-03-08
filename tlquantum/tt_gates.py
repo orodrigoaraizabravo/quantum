@@ -761,9 +761,9 @@ class star_wII(Module):
             self.core[0,0,1,0]=self.core[0,1,0,0] = 1j*ct*srt
             #WB
             self.core[1,0,0,0] =t*(st*(srt+crt)-1j*ct**2*sc)
-            self.core[1,1,1,0] =t*(st*(srt+crt)+1j*ct**2*sc)
+            self.core[1,1,1,0] =t.conj()*(st*(srt+crt)+1j*ct**2*sc)
             self.core[1,0,1,0] =t*ct*st*(crt-1j*sc)
-            self.core[1,1,0,0] =-t*ct*st*(crt+1j*sc)
+            self.core[1,1,0,0] =-t.conj()*ct*st*(crt+1j*sc)
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
 
