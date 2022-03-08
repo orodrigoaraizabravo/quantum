@@ -766,7 +766,7 @@ class star_wII(Module):
             self.core[0,:,:,0] = self.I2
             self.core[0,:,:,1] = w[0, 1, :, 0, 0, :]
         elif self.end is None: #((1,1j*t*J*Sz),(0,1))
-            self.core[0,:,:,0]=self.I2
+            self.core[0,:,:,0] = self.I2
             self.core[0,:,:,1]=w[0, 1, :, 0, 0, :]
             self.core[1,:,:,1]=w[1, 1, :, 0, 0, :]
 
