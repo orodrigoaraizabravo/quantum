@@ -749,24 +749,25 @@ class star_wII(Module):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
         tau = -1j*self.dt
-        stau= sqrt(tau)
+        tc= -(1+1j)/sqrt(2)*sqrt(self.dt)
+        tb= -(1-1j)/sqrt(2)*sqrt(self.dt)
         if self.end !=1:
             Dm=tl.zeros([2,2], dtype=complex64, device=self.device)
             Bm=Dm
             Cm=self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
         else: 
-            Dm=tl.tensor([[self.h[0],self.h[1]], [self.h[1], -self.h[0]]], dtype=complex64, device=self.device)
+            Dm=tl.tensor([[self.h[0],self.h[1]], [self.h[1],-self.h[0]]], dtype=complex64, device=self.device)
             Cm=tl.zeros([2,2], dtype=complex64, device=self.device)
             Bm=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
         
-        w=matrix_exp(tl.kron(self.Brc,self.I2)+stau*tl.kron(self.Br, Bm)\
-                     +stau*tl.kron(self.Bc, Cm)+tau*tl.kron(self.I4, Dm)).reshape([2]*6)
+        w=matrix_exp(tl.kron(self.Brc,self.I2)+tb*tl.kron(self.Br, Bm)\
+                     +tc*tl.kron(self.Bc, Cm)+tau*tl.kron(self.I4, Dm)).reshape([2]*6)
         
-        if self.end==0: #(1, 1j*t*JSz)=
-            self.core[0,:,:,0] = self.I2
-            self.core[0,:,:,1] = w[0, 1, :, 0, 0, :]
-        elif self.end is None: #((1,1j*t*J*Sz),(0,1))
-            self.core[0,:,:,0] = self.I2
+        if self.end==0: #(1, WC)
+            self.core[0,:,:,0]=self.I2
+            self.core[0,:,:,1]=w[0, 1, :, 0, 0, :]
+        elif self.end is None: #((1,WC),(0,WA))
+            self.core[0,:,:,0]=self.I2
             self.core[0,:,:,1]=w[0, 1, :, 0, 0, :]
             self.core[1,:,:,1]=w[1, 1, :, 0, 0, :]
 
