@@ -749,14 +749,14 @@ class star_wII(Module):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
         tau = -1j*self.dt
-        tc= sqrt(self.dt)
-        tb= self.dt/tc
+        tc= (1+1j)*sqrt(self.dt/2)
+        tb= (1-1j)*sqrt(self.dt/2)
         if self.end !=1:
             Dm=tl.zeros([2,2], dtype=complex64, device=self.device)
             Bm=Dm
             Cm=self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
         else: 
-            Dm=tl.tensor([[self.h[0],self.h[1]], [self.h[1],-self.h[0]]], dtype=complex64, device=self.device)
+            Dm=tl.tensor([[self.h[1],self.h[0]], [self.h[0],-self.h[1]]], dtype=complex64, device=self.device)
             Cm=tl.zeros([2,2], dtype=complex64, device=self.device)
             Bm=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
         
