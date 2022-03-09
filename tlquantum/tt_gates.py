@@ -763,14 +763,15 @@ class star_wII(Module):
         w=matrix_exp(tl.kron(self.Brc,self.I2)+tb*tl.kron(self.Br, Bm)\
                      +tc*tl.kron(self.Bc, Cm)+tau*tl.kron(self.I4, Dm)).reshape([2]*6)
         
-        if self.end==0: #(1, WC)
-            self.core[0,:,:,0]=self.I2
+        if self.end==0: #(WD, WC)
+            self.core[0,:,:,0]=w[0, 0, :, 0, 0, :]
             self.core[0,:,:,1]=w[0, 1, :, 0, 0, :]
-        elif self.end is None: #((1,WC),(0,WA))
-            self.core[0,:,:,0]=self.I2
+        elif self.end is None: #((WD,WC),(WB,WA))
+            self.core[0,:,:,0]=w[0, 0, :, 0, 0, :]
             self.core[0,:,:,1]=w[0, 1, :, 0, 0, :]
             self.core[1,:,:,1]=w[1, 1, :, 0, 0, :]
-
+            self.core[1,:,:,0]=w[1, 0, :, 0, 0, :]
+    
         elif self.end == 1: #((WD),(WB))
             self.core[0,:,:,0]= w[0, 0, :, 0, 0, :]
             self.core[1,:,:,0]= w[1, 0, :, 0, 0, :]
