@@ -749,8 +749,8 @@ class star_wII(Module):
         '''This function prepares the cores. The cores for the inputs are easy to
         prepare as they are diagonal.'''
         tau = -1j*self.dt
-        tc= -(1+1j)/sqrt(2)*sqrt(self.dt)
-        tb= -(1-1j)/sqrt(2)*sqrt(self.dt)
+        tc= -(1+1j)*sqrt(self.dt/2)
+        tb= -(1-1j)*sqrt(self.dt/2)
         if self.end !=1:
             Dm=tl.zeros([2,2], dtype=complex64, device=self.device)
             Bm=Dm
