@@ -639,7 +639,6 @@ class O4LR(Module):
 
 def exp_pauli_y(dtype=complex64, device=None):
     """Matrix for sin(theta) component of Y-axis rotation in tt-tensor form.
-
     Parameters
     ----------
     device : string, device on which to run the computation.
@@ -664,29 +663,23 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
-class StarEvolutionSingleOutput(Unitary):
+class Perceptron(Unitary):
     """
     Ex) Below is a picture of a two-layers perceptron. If we want to evolve
     the bottom output by the input layer we do
-    O\----O      nqubits_total=5,   layers = [3,2]
-    O/-/--O      layer_in = 0   layer_out = 1, indx_out = 1
-    O/           MPO=[wII(0), wII(None), WII(None), Identity, WII(1)]
+    O\----O      nqubits_total=4,   layers = [3,1]
+    O/-/
+    O/           MPO=[wII(0), wII(None), WII(None), WII(1)]
     """
-    def __init__(self, nqubits_total, ncontraq, \
-                layers, layer_in, layer_out, indx_out, dt=0.1, contrsets=None, device=None, Js=None, h=None):
+    def __init__(self, nqubits_total, ncontraq, dt=0.1, contrsets=None, device=None, Js=None, h=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
-        nq_top = sum(layers[0:layer_in])
-        nq_down = sum(layers[layer_out+1:])
-        Win, Wout= layers[layer_in], layers[layer_out] #width of input layer and output layer
+        Win=nqubits_total-1
         if Js is None and h is None:
-            layer =[star_wII(dt=dt,device=device, end=0)]+[star_wII(dt=dt,device=device, end=None) for i in range(1,Win)]
-            layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1)]
-            layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
+            gates =[star_wII(dt=dt,device=device, end=0)]+[star_wII(dt=dt,device=device, end=None) for i in range(1,Win)]
+            gates+=[star_wII(dt=dt,device=device, end=1)]
         else:
-            layer =[star_wII(dt=dt,device=device, end=0, j0=Js[0])]+[star_wII(dt=dt,device=device, end=None, j0=Js[i]) for i in range(1,Win)]
-            layer+=[IDENTITY(device=device)]*indx_out+[star_wII(dt=dt,device=device, end=1, h0=h)]
-            layer+=[IDENTITY(device=device)]*(Wout-indx_out-1)
-        gates = [IDENTITY(device=device)]*nq_top+layer+[IDENTITY(device=device)]*nq_down
+            gates =[star_wII(dt=dt,device=device, end=0, j0=Js[0])]+[star_wII(dt=dt,device=device, end=None, j0=Js[i]) for i in range(1,Win)]
+            gates+=[star_wII(dt=dt,device=device, end=1, h0=h)]
         self._set_gates(gates)
 
 class star_wII(Module): 
@@ -740,11 +733,12 @@ class star_wII(Module):
                 self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
             else: self.h=Parameter(h0)
             self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
-            self.prepare_core()
         else: raise ValueError('End {} not supported'.format(self.end)) 
+        
+        self.prepare_core()
     
     def forward(self): 
-        return self.prepare_core()
+        return self.core()
         
     def prepare_core(self):
         '''This function prepares the cores. The cores for the inputs are easy to
