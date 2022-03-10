@@ -731,12 +731,10 @@ class star_wII(Module):
             if j0 is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(j0)
             self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
-            self.prepare_core()
         elif end is None:
             if j0 is None:self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(j0)
             self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
-            self.prepare_core()
         elif end==1: 
             if h0 is None:
                 self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
@@ -744,6 +742,9 @@ class star_wII(Module):
             self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             self.prepare_core()
         else: raise ValueError('End {} not supported'.format(self.end)) 
+    
+    def forward(self): 
+        return self.prepare_core()
         
     def prepare_core(self):
         '''This function prepares the cores. The cores for the inputs are easy to
@@ -778,13 +779,3 @@ class star_wII(Module):
     
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
-
-    def forward(self): 
-        """Once the core is prepared in the __init__ function, this function pushes it 
-        forward. The parameters of the core are updated every epoch 
-        through backprop via PyTorch Autograd.
-        Returns
-        -------
-        Gate tensor for general forward pass.
-        """
-        return self.core
