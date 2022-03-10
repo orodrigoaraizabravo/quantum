@@ -79,7 +79,7 @@ SO4_01 = tlq.BinaryGatesUnitary(nqubits, ncontraq, tlq.so4(2,3, device=device, d
 unitaries = [RotY, SO4_01, RotY, CZ0, RotX]
 
 # %% or build circuit block by block
-repeat_block, unitaries_automatic = 5, []
+repeat_block, unitaries_automatic = 2, []
 for i in range(repeat_block):
     unitaries_automatic += unitaries
 
@@ -102,7 +102,7 @@ for epoch in range(nepochs):
     opt.zero_grad(epoch)
     energy_vec[epoch] = energy
 
-
+'''
 # %% VIsualize the results
 Ising_H = TTMatrix(Ising_H).to_matrix()
 true_energies, _ = tl.eigh(Ising_H)
@@ -121,3 +121,4 @@ plt.show()
 # References
 # ----------
 # .. [1] Peruzzo, A., McClean, J., Shadbolt, P. et al. A variational eigenvalue solver on a photonic quantum processor. Nat Commun 5, 4213 (2014). 
+'''

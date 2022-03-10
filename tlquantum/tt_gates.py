@@ -738,7 +738,7 @@ class star_wII(Module):
         self.prepare_core()
     
     def forward(self): 
-        return self.core()
+        return self.core
         
     def prepare_core(self):
         '''This function prepares the cores. The cores for the inputs are easy to

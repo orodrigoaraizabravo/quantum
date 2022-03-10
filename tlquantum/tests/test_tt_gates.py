@@ -5,7 +5,7 @@ from tensorly.testing import assert_array_almost_equal
 from torch import cos, sin, complex64, float32, exp
 from opt_einsum import contract
 
-from ..tt_gates import exp_pauli_y, UnaryGatesUnitary, RotY, cnot, cz, so4, o4_phases, BinaryGatesUnitary
+from ..tt_gates import exp_pauli_y, UnaryGatesUnitary, RotY, cnot, cz, so4, o4_phases, BinaryGatesUnitary, IDENTITY
 from ..tt_operators import identity
 from ..tt_contraction import contraction_eq
 
