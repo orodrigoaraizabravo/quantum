@@ -1,12 +1,11 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import randn, cos, sin, float32, complex64, exp, sqrt, sinc, kron, matrix_exp
+from torch import randn, cos, sin, complex64, exp
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
-from numpy import pi
 from .tt_operators import identity
-from .tt_precontraction import qubits_contract, _get_contrsets
+from .tt_precontraction import  qubits_contract, _get_contrsets, layers_contract
 from .tt_sum import tt_matrix_sum
 
 
@@ -663,7 +662,61 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
+
+class perceptron_MPOEvol(Module): 
+    def __init__(self, approx=1, dt=0.1, j0=None, h0=None, device=None, end=0):
+        super().__init__()
+        if end==0:
+            if j0 is None: self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(j0)
+            _core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
+            _core[0,:,:,0] = -1j*dt*tl.eye(2, device=device, dtype=complex64)
+            _core[0,:,:,1] = -1j*dt*self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            
+        elif end is None:
+            if j0 is None:self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(j0)
+            _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
+            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+        
+        elif end==1: 
+            if h0 is None:
+                self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
+            else: self.h=Parameter(h0)
+            _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
+            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            _core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
+                                          [self.h[0],-self.h[1]]], dtype=complex64, device=device)
+        
+        if approx==1: 
+            self.core = tt_matrix_sum(IDENTITY().forward(), _core)
+        else:
+            self.core = tt_matrix_sum(IDENTITY().forward(), \
+                                      layers_contract([_core]*approx, approx))
+        
+    def forward(self): 
+        return self.core 
+
 class Perceptron(Unitary):
+    def __init__(self, nqubits_total, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
+        super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
+        
+        Win=nqubits_total-1
+        if Js is None and h is None:
+            gates =[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=0)]
+            gates+=[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=None) for i in range(1,Win)]
+            gates+=[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=1)]
+        else:
+            gates =[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=0, j0=Js[0])]
+            gates+=[perceptron_MPOEvol(approx=approx, dt=dt,device=device, end=None, j0=Js[i]) for i in range(1,Win)]
+            gates+=[perceptron_MPOEvol(approx=approx, dt=dt,device=device, end=1, h0=h)]
+        
+        self._set_gates(gates)
+    
+''' 
+class Perceptron_WII(Unitary):
     """
     Ex) Below is a picture of a two-layers perceptron. If we want to evolve
     the bottom output by the input layer we do
@@ -683,7 +736,7 @@ class Perceptron(Unitary):
         self._set_gates(gates)
 
 class star_wII(Module): 
-    '''This class generates an approximation of the unitary evolution in MPO
+    This class generates an approximation of the unitary evolution in MPO
     form for the star model. The star model consist of a number of input qubits
     interacting with a central output qubit via Ising type interaction: 
         H = Sum_{input}J_{input}S^z_{input}S^z_{output}+DS^z_{output}+OS^x_{output}
@@ -704,12 +757,12 @@ class star_wII(Module):
     of size (2,2,2,2). 
     If end=1, the qubit is the output qubit with core size (2,2,2,1). 
     Note that this core contains nontrivial terms coming from the 
-    commutation of [Sx, Sz].'''
+    commutation of [Sx, Sz].
             
     def __init__(self, dt = 0.1, j0=None, h0=None, device=None, end=0): 
-        '''Initiallize the module and create a core. Note that if the qubit
+        Initiallize the module and create a core. Note that if the qubit
         is an input qubit, we only have one tunabble parameter J corresponding 
-        to how the input qubit in question interacts with the output.'''
+        to how the input qubit in question interacts with the output.
         super().__init__()
         self.end, self.device = end, device
         self.b  = tl.tensor([[0, 0], [1, 0]], dtype=complex64, device=device)
@@ -741,8 +794,6 @@ class star_wII(Module):
         return self.core
         
     def prepare_core(self):
-        '''This function prepares the cores. The cores for the inputs are easy to
-        prepare as they are diagonal.'''
         tau = -1j*self.dt
         tc= (1+1j)*sqrt(self.dt/2)
         tb= (1-1j)*sqrt(self.dt/2)
@@ -773,3 +824,4 @@ class star_wII(Module):
     
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
+'''
