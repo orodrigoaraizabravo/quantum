@@ -1,6 +1,6 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import randn, cos, sin, complex64, exp
+from torch import randn, cos, sin, complex64, exp, matrix_exp, sqrt
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
@@ -715,7 +715,7 @@ class Perceptron(Unitary):
         
         self._set_gates(gates)
     
-''' 
+
 class Perceptron_WII(Unitary):
     """
     Ex) Below is a picture of a two-layers perceptron. If we want to evolve
@@ -736,7 +736,7 @@ class Perceptron_WII(Unitary):
         self._set_gates(gates)
 
 class star_wII(Module): 
-    This class generates an approximation of the unitary evolution in MPO
+    '''This class generates an approximation of the unitary evolution in MPO
     form for the star model. The star model consist of a number of input qubits
     interacting with a central output qubit via Ising type interaction: 
         H = Sum_{input}J_{input}S^z_{input}S^z_{output}+DS^z_{output}+OS^x_{output}
@@ -757,12 +757,12 @@ class star_wII(Module):
     of size (2,2,2,2). 
     If end=1, the qubit is the output qubit with core size (2,2,2,1). 
     Note that this core contains nontrivial terms coming from the 
-    commutation of [Sx, Sz].
+    commutation of [Sx, Sz].'''
             
     def __init__(self, dt = 0.1, j0=None, h0=None, device=None, end=0): 
-        Initiallize the module and create a core. Note that if the qubit
+        '''Initiallize the module and create a core. Note that if the qubit
         is an input qubit, we only have one tunabble parameter J corresponding 
-        to how the input qubit in question interacts with the output.
+        to how the input qubit in question interacts with the output.'''
         super().__init__()
         self.end, self.device = end, device
         self.b  = tl.tensor([[0, 0], [1, 0]], dtype=complex64, device=device)
@@ -824,4 +824,3 @@ class star_wII(Module):
     
         else: raise ValueError('End {} not supported'.format(self.end)) 
         return
-'''
