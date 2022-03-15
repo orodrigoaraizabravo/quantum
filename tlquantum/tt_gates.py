@@ -7,7 +7,7 @@ from copy import deepcopy
 from .tt_operators import identity
 from .tt_precontraction import  qubits_contract, _get_contrsets, layers_contract
 from .tt_sum import tt_matrix_sum
-
+from math import factorial 
 
 # Author: Taylor Lee Patti <taylorpatti@g.harvard.edu>
 # Author: Jean Kossaifi <jkossaifi@nvidia.com>
@@ -662,68 +662,47 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
-
-class perceptron_MPOEvol(Module): 
-    def __init__(self, approx=1, dt=0.01, j0=None, h0=None, device=None, end=0):
-        super().__init__()
-        if end==0:
-            if j0 is None: self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(j0)
-            _core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = -1j*dt*tl.eye(2, device=device, dtype=complex64)
-            _core[0,:,:,1] = -1j*dt*self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            
-        elif end is None:
-            if j0 is None:self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(j0)
-            _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
-            _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
-            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-        
-        elif end==1: 
-            if h0 is None:
-                self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
-            else: self.h=Parameter(h0)
-            _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
-            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            _core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
-                                          [self.h[0],-self.h[1]]], dtype=complex64, device=device)
-        
-        if approx==1: 
-            self.core = tt_matrix_sum(IDENTITY().forward(), _core)
-        else:
-            self.core = tt_matrix_sum(IDENTITY().forward(), \
-                                      layers_contract([_core]*approx, approx))
-        
-    def forward(self): 
-        return self.core 
-
-class Perceptron(Unitary):
+class Perceptron_MPO(Unitary):
     def __init__(self, nqubits_total, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
         
-        Win=nqubits_total-1
-        if Js is None and h is None:
-            gates =[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=0)]
-            gates+=[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=None) for i in range(1,Win)]
-            gates+=[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=1)]
-        else:
-            gates =[perceptron_MPOEvol(approx=approx, dt=dt, device=device, end=0, j0=Js[0])]
-            gates+=[perceptron_MPOEvol(approx=approx, dt=dt,device=device, end=None, j0=Js[i]) for i in range(1,Win)]
-            gates+=[perceptron_MPOEvol(approx=approx, dt=dt,device=device, end=1, h0=h)]
+        gates = [perceptron_mpo(device=device,Js=Js, h=h, end=0)]
+        gates+= [perceptron_mpo(device=device,Js=Js, h=h, end=i) for i in range(1,nqubits_total-1)]
+        gates+= [perceptron_mpo(device=device,Js=Js, h=h, end=-1)]
         
         self._set_gates(gates)
-    
+        
+class perceptron_mpo(Module):        
+    def __init__(self, Js=None, h=None, device=None, end=0): 
+        super().__init__()
+        if end==0:
+            if Js is None: self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(Js[end])
+            self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
+            self.core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            self.core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+        
+        elif end!=-1 and end!=0: 
+            if Js is None: self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(Js[end])
+            self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
+            self.core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            self.core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
+            self.core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+        
+        elif end==-1:
+            if h is None:
+                self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
+            else: self.h=Parameter(h)
+            self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
+            self.core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            self.core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
+                     [self.h[0],-self.h[1]]], dtype=complex64, device=device)
+
+    def forward(self): 
+        return self.core
 
 class Perceptron_WII(Unitary):
-    """
-    Ex) Below is a picture of a two-layers perceptron. If we want to evolve
-    the bottom output by the input layer we do
-    O\----O      nqubits_total=4,   layers = [3,1]
-    O/-/
-    O/           MPO=[wII(0), wII(None), WII(None), WII(1)]
-    """
     def __init__(self, nqubits_total, ncontraq, dt=0.1, contrsets=None, device=None, Js=None, h=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
         Win=nqubits_total-1
