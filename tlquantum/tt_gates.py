@@ -664,7 +664,7 @@ def exp_pauli_x(dtype=complex64, device=None):
 
 
 class perceptron_MPOEvol(Module): 
-    def __init__(self, approx=1, dt=0.1, j0=None, h0=None, device=None, end=0):
+    def __init__(self, approx=1, dt=0.01, j0=None, h0=None, device=None, end=0):
         super().__init__()
         if end==0:
             if j0 is None: self.J = Parameter(randn(1, device=device))
