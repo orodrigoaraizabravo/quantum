@@ -662,34 +662,46 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
-class Perceptron_MPO(Unitary):
+def core_addition(c1, c2):
+    z1=tl.zeros([1,2,2,1], device=c1.device, dtype=c1.dtype)
+    z21 = tl.zeros([1,2,2,c2.shape[0]], device=c2.device, dtype=c2.dtype)
+    z22 = tl.zeros([c2.shape[-1],2,2,1], device=c2.device, dtype=c2.dtype)
+    return tt_matrix_sum([z1,c1,z1],[z21,c2,z22])[1]
+
+def core_multiplication(cores):
+    l=len(cores)
+    return layers_contract([[core] for core in cores], l)[0]
+
+class Perceptron_U(Unitary):
     def __init__(self, nqubits_total, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
-        
-        gates = [perceptron_mpo(device=device,Js=Js, h=h, end=0)]
-        gates+= [perceptron_mpo(device=device,Js=Js, h=h, end=i) for i in range(1,nqubits_total-1)]
-        gates+= [perceptron_mpo(device=device,Js=Js, h=h, end=-1)]
+        self.Id2 = IDENTITY(device=device).forward()
+        gates = [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=0)]
+        gates+= [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=i) for i in range(1,nqubits_total-1)]
+        gates+= [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=-1)]
         
         self._set_gates(gates)
         
-class perceptron_mpo(Module):        
-    def __init__(self, Js=None, h=None, device=None, end=0): 
+class perceptron_U(Module):        
+    def __init__(self, approx=1, dt= 0.01, Js=None, h=None, device=None, end=0): 
         super().__init__()
         if end==0:
             if Js is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(Js[end])
-            self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
-            self.core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
-            self.core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            _core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
+            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            self.core = core_addition(self.Id2,\
+            core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))
         
         elif end!=-1 and end!=0: 
             if Js is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(Js[end])
-            self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
-            self.core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
-            self.core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
-            self.core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-        
+            _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
+            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
         elif end==-1:
             if h is None:
                 self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
@@ -698,7 +710,7 @@ class perceptron_mpo(Module):
             self.core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             self.core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
                      [self.h[0],-self.h[1]]], dtype=complex64, device=device)
-
+            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
     def forward(self): 
         return self.core
 
