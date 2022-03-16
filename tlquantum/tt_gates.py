@@ -684,33 +684,34 @@ class Perceptron_U(Unitary):
 class perceptron_U(Module):        
     def __init__(self, approx=1, dt= 0.01, Js=None, h=None, device=None, end=0): 
         super().__init__()
-        self.Id2 = tl.eye(2, device=device, dtype=complex64)
+        self.Id2 = IDENTITY(device=device).forward()
+    
         if end==0:
-            if Js is None: self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(Js[end])
-            _core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = self.Id2
+            if Js is None: self.J=Parameter(randn(1, device=device, dtype=complex64))
+            else: self.J=Parameter(Js[end])
+            _core = tl.zeros((1,2,2,2),  device=device, dtype=complex64)
+            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+    
             self.core = core_addition(self.Id2,\
-            core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))
-        
-        elif end!=-1 and end!=0: 
-            if Js is None: self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(Js[end])
+                    core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))
+        elif end==-1:
+            if h is None: self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
+            else: self.h=Parameter(h)
+            _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
+            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            _core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
+                              [self.h[0],-self.h[1]]], dtype=complex64, device=device)
+            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
+        else:
+            if Js is None: self.J=Parameter(randn(1, device=device, dtype=complex64))
+            else: self.J=Parameter(Js[end])
             _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = self.Id2
-            _core[1,:,:,1] = self.Id2
+            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
-        elif end==-1:
-            if h is None:
-                self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
-            else: self.h=Parameter(h)
-            self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
-            self.core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            self.core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
-                     [self.h[0],-self.h[1]]], dtype=complex64, device=device)
-            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
+    
     def forward(self): 
         return self.core
 
