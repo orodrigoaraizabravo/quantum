@@ -1,6 +1,6 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import randn, cos, sin, complex64, exp, matrix_exp, sqrt
+from torch import randn, cos, sin, complex64, exp, matrix_exp, sqrt, unsqueeze
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
@@ -693,8 +693,8 @@ class perceptron_U(Module):
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
     
-            self.core = core_addition(self.Id2,\
-                    core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))[1,:,:,:]
+            self.core = unsqueeze(core_addition(self.Id2,\
+                    core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))[1,:,:,:],0)
         elif end==-1:
             if h is None: self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
             else: self.h=Parameter(h)
@@ -710,7 +710,8 @@ class perceptron_U(Module):
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
+            self.core = unsqueeze(core_addition(self.Id2,\
+                        core_multiplication([_core for j in range(approx)])),-1)
 
     def forward(self): 
         return self.core
