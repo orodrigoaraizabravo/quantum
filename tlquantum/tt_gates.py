@@ -694,7 +694,7 @@ class perceptron_U(Module):
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
     
             self.core = core_addition(self.Id2,\
-                    core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))
+                    core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))[1,:,:,:]
         elif end==-1:
             if h is None: self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
             else: self.h=Parameter(h)
@@ -702,7 +702,7 @@ class perceptron_U(Module):
             _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             _core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
                               [self.h[0],-self.h[1]]], dtype=complex64, device=device)
-            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
+            self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))[:,:,:,1]
         else:
             if Js is None: self.J=Parameter(randn(1, device=device, dtype=complex64))
             else: self.J=Parameter(Js[end])
@@ -711,7 +711,7 @@ class perceptron_U(Module):
             _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
-    
+
     def forward(self): 
         return self.core
 
