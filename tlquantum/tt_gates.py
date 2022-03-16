@@ -675,7 +675,6 @@ def core_multiplication(cores):
 class Perceptron_U(Unitary):
     def __init__(self, nqubits_total, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
         super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
-        self.Id2 = IDENTITY(device=device).forward()
         gates = [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=0)]
         gates+= [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=i) for i in range(1,nqubits_total-1)]
         gates+= [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=-1)]
@@ -685,11 +684,12 @@ class Perceptron_U(Unitary):
 class perceptron_U(Module):        
     def __init__(self, approx=1, dt= 0.01, Js=None, h=None, device=None, end=0): 
         super().__init__()
+        self.Id2 = tl.eye(2, device=device, dtype=complex64)
         if end==0:
             if Js is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(Js[end])
             _core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
+            _core[0,:,:,0] = self.Id2
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             self.core = core_addition(self.Id2,\
             core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))
@@ -698,8 +698,8 @@ class perceptron_U(Module):
             if Js is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(Js[end])
             _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
-            _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
+            _core[0,:,:,0] = self.Id2
+            _core[1,:,:,1] = self.Id2
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             self.core = core_addition(self.Id2, core_multiplication([_core for j in range(approx)]))
         elif end==-1:
