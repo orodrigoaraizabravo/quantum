@@ -662,15 +662,22 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
-def core_addition(c1, c2):
-    z1=tl.zeros([1,2,2,1], device=c1.device, dtype=c1.dtype)
-    z21 = tl.zeros([1,2,2,c2.shape[0]], device=c2.device, dtype=c2.dtype)
-    z22 = tl.zeros([c2.shape[-1],2,2,1], device=c2.device, dtype=c2.dtype)
-    return tt_matrix_sum([z1,c1,z1],[z21,c2,z22])[1]
+def core_addition(c1, c2, end=0):
+    if end==0: 
+        return tl.concatenate((c1, c2), axis=3)
+    elif end==-1: 
+        return tl.concatenate((c1, c2), axis=0)
+    else: 
+        pc1 = tl.concatenate(
+                (c1, tl.zeros((c2.shape[0], c1.shape[1], c1.shape[2], c1.shape[3]), device=c1.device))
+                 , axis=0)
+        pc2 = tl.concatenate(
+                (tl.zeros((c1.shape[0], c1.shape[1], c1.shape[2], c2.shape[3]), device=c2.device), c2),
+                axis=0)
+        return tl.concatenate((pc1, pc2), axis=3)
 
-def core_multiplication(cores):
-    l=len(cores)
-    return layers_contract([[core] for core in cores], l)[0]
+def core_multiplication(f, core, i):
+    return layers_contract([[f*core]]+[[core]*(i)], i+1)[0]
 
 class Perceptron_U(Unitary):
     def __init__(self, nqubits_total, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
@@ -684,26 +691,26 @@ class Perceptron_U(Unitary):
 class perceptron_U(Module):        
     def __init__(self, approx=1, dt= 0.01, Js=None, h=None, device=None, end=0): 
         super().__init__()
-        self.Id2 = IDENTITY(device=device).forward()
+        self.core = IDENTITY(device=device).forward()
     
         if end==0:
-            if Js is None: self.J=Parameter(randn(1, device=device, dtype=complex64))
+            if Js is None: self.J=Parameter(randn(1, device=device))
             else: self.J=Parameter(Js[end])
             _core = tl.zeros((1,2,2,2),  device=device, dtype=complex64)
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-    
-            self.core = unsqueeze(core_addition(self.Id2,\
-                    core_multiplication([-1j*dt/(j+1)*_core for j in range(approx)]))[1,:,:,:],0)
+            for i in range(approx):
+                f = (-1j*dt)**(i+1)/factorial(i+1)
+                self.core = core_addition(self.core,core_multiplication(f, _core, i), end=end)
         elif end==-1:
             if h is None: self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
             else: self.h=Parameter(h)
             _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             _core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
-                              [self.h[0],-self.h[1]]], dtype=complex64, device=device)
-            self.core =  unsqueeze(core_addition(self.Id2, \
-                        core_multiplication([_core for j in range(approx)]))[:,:,:,1],-1)
+                                  [self.h[0],-self.h[1]]], dtype=complex64, device=device)
+            for i in range(approx): 
+                self.core = core_addition(self.core, core_multiplication(1., _core, i), end=end)
         else:
             if Js is None: self.J=Parameter(randn(1, device=device, dtype=complex64))
             else: self.J=Parameter(Js[end])
@@ -711,8 +718,8 @@ class perceptron_U(Module):
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            self.core =core_addition(self.Id2,\
-                        core_multiplication([_core for j in range(approx)]))
+            for i in range(approx): 
+                self.core = core_addition(self.core, core_multiplication(1., _core, i), end=end)
 
     def forward(self): 
         return self.core
