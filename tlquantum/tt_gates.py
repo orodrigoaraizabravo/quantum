@@ -115,8 +115,7 @@ class UnaryGatesUnitary(Unitary):
         elif axis == 'z':
             self._set_gates([RotZ(dtype=dtype, device=device) for i in range(self.nqubits)])
         else:
-            raise IndexError('UnaryGatesUnitary has no rotation axis {}.\n'
-                             'UnaryGatesUnitary has 3 rotation axes: x, y, and z. The y-axis is default.'.format(axis))
+            self._set_gates([Rot(dtype=dtype, device=device) for i in range(self.nqubits)])
 
 
 def build_binary_gates_unitary(nqubits, q2gate, parity, random_initialization=True, dtype=complex64):
@@ -238,6 +237,35 @@ class RotZ(Module):
         """
         return tl.tensor([[[[exp(-1j*self.theta/2)],[0]],[[0],[exp(1j*self.theta/2)]]]], dtype=self.dtype, device=self.device)
 
+class Rot(Module):
+    """Qubit rotations about a random axis.
+
+    Parameters
+    ----------
+    device : string, device on which to run the computation.
+
+    Returns
+    -------
+    Rotation matrix
+    """
+    def __init__(self, dtype=complex64, device=None):
+        super().__init__()
+        self.theta, self.dtype, self.device = Parameter(randn(3, device=device)), dtype, device
+        self.core = tl.zeros([1,2,2,1], dtype=dtype, device=device)
+        
+        self.core[0,0,0,0]= cos(self.theta[0]/2), 
+        self.core[0,1,1,0]= exp(1j*(self.theta[1]+self.theta[2]))*cos(self.theta[0]/2)
+        self.core[0,0,1,0]= -exp(1j*self.theta[1])*sin(self.theta[0]/2)
+        self.core[0,1,0,0]= exp(1j*self.theta[2])*sin(self.theta[0]/2)
+        
+    def forward(self):
+        """
+        Returns
+        -------
+        Gate tensor for general forward pass.
+        """
+
+        return self.core
 
 class IDENTITY(Module):
     """Identity gate (does not change the state of the qubit on which it acts).
@@ -712,7 +740,7 @@ class perceptron_U(Module):
             for i in range(approx): 
                 self.core = core_addition(self.core, core_multiplication(1., _core, i), end=end)
         else:
-            if Js is None: self.J=Parameter(randn(1, device=device, dtype=complex64))
+            if Js is None: self.J=Parameter(randn(1, device=device))
             else: self.J=Parameter(Js[end])
             _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
