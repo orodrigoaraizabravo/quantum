@@ -735,8 +735,8 @@ class perceptron_U(Module):
             else: self.h=Parameter(h)
             _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            _core[0,:,:,0]=tl.tensor([[self.h[1],self.h[0]],\
-                                  [self.h[0],-self.h[1]]], dtype=complex64, device=device)
+            _core[0,:,:,0]=self.h[1]*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            _core[0,:,:,0]+=self.h[2]*tl.tensor([[0,1],[1,0]], dtype=complex64, device=device)                             
             for i in range(approx): 
                 self.core = core_addition(self.core, core_multiplication(1., _core, i), end=end)
         else:
