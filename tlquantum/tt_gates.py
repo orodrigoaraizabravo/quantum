@@ -259,7 +259,7 @@ class Rot(Module):
         Gate tensor for general forward pass.
         """
         self.core = tl.zeros([1,2,2,1], dtype=self.dtype, device=self.device)
-        self.core[0,0,0,0]= cos(self.theta[0]/2), 
+        self.core[0,0,0,0]= cos(self.theta[0]/2)
         self.core[0,1,1,0]= exp(1j*(self.theta[1]+self.theta[2]))*cos(self.theta[0]/2)
         self.core[0,0,1,0]= -exp(1j*self.theta[1])*sin(self.theta[0]/2)
         self.core[0,1,0,0]= exp(1j*self.theta[2])*sin(self.theta[0]/2)
