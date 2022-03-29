@@ -251,12 +251,6 @@ class Rot(Module):
     def __init__(self, dtype=complex64, device=None):
         super().__init__()
         self.theta, self.dtype, self.device = Parameter(randn(3, device=device)), dtype, device
-        self.core = tl.zeros([1,2,2,1], dtype=dtype, device=device)
-        
-        self.core[0,0,0,0]= cos(self.theta[0]/2), 
-        self.core[0,1,1,0]= exp(1j*(self.theta[1]+self.theta[2]))*cos(self.theta[0]/2)
-        self.core[0,0,1,0]= -exp(1j*self.theta[1])*sin(self.theta[0]/2)
-        self.core[0,1,0,0]= exp(1j*self.theta[2])*sin(self.theta[0]/2)
         
     def forward(self):
         """
@@ -264,7 +258,11 @@ class Rot(Module):
         -------
         Gate tensor for general forward pass.
         """
-
+        self.core = tl.zeros([1,2,2,1], dtype=self.dtype, device=self.device)
+        self.core[0,0,0,0]= cos(self.theta[0]/2), 
+        self.core[0,1,1,0]= exp(1j*(self.theta[1]+self.theta[2]))*cos(self.theta[0]/2)
+        self.core[0,0,1,0]= -exp(1j*self.theta[1])*sin(self.theta[0]/2)
+        self.core[0,1,0,0]= exp(1j*self.theta[2])*sin(self.theta[0]/2)
         return self.core
 
 class IDENTITY(Module):
