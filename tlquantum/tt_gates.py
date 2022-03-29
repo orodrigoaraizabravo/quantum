@@ -730,35 +730,36 @@ class Perceptron_U(Unitary):
 class perceptron_U(Module):        
     def __init__(self, approx=1, dt= 0.01, Js=None, h=None, device=None, end=0): 
         super().__init__()
-        self.end, self.approx = end, approx
+        self.dt= dt
+        self.end, self.approx, self.device= end, approx, device
         if end != -1:
             if Js is None: self.J = Parameter(randn(1, device=device))
-            else: self.J = Parameter(t.tensor(Js[end], device=device))
+            else: self.J = Parameter(tl.tensor(Js[end], device=device))
         else: 
             if h is None: self.J = Parameter(randn(2, device=device))
-            else: self.J = Parameter(t.tensor(h, device=device))
+            else: self.J = Parameter(tl.tensor(h, device=device))
         
     def forward(self):
-        self.core = IDENTITY(device=device).forward()
+        self.core = IDENTITY(device=self.device).forward()
         if self.end==0:
-            _core = tl.zeros((1,2,2,2),  device=device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
-            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            for i in range(approx):
-                f = (-1j*dt)**(i+1)/factorial(i+1)
+            _core = tl.zeros((1,2,2,2),  device=self.device, dtype=complex64)
+            _core[0,:,:,0] = tl.eye(2, device=self.device, dtype=complex64)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            for i in range(self.approx):
+                f = (-1j*self.dt)**(i+1)/factorial(i+1)
                 self.core = core_addition(self.core,core_multiplication(f, _core, i), end=self.end)
         elif self.end==-1: 
-            _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
-            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            _core[0,:,:,0]=self.J[1]*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            _core[0,:,:,0]+=self.J[0]*tl.tensor([[0,1],[1,0]], dtype=complex64, device=device) 
+            _core = tl.zeros((2,2,2,1), device=self.device, dtype=complex64)
+            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            _core[0,:,:,0]=self.J[1]*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            _core[0,:,:,0]+=self.J[0]*tl.tensor([[0,1],[1,0]], dtype=complex64, device=self.device) 
             for i in range(self.approx):
                 self.core = core_addition(self.core,core_multiplication(1., _core, i), end=self.end)
         else: 
-            _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
-            _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
-            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            _core = tl.zeros((2,2,2,2), device=self.device, dtype=complex64)
+            _core[0,:,:,0] = tl.eye(2, device=self.device, dtype=complex64)
+            _core[1,:,:,1] = tl.eye(2, device=self.device, dtype=complex64)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
             for i in range(self.approx): 
                 self.core = core_addition(self.core,core_multiplication(1., _core, i), end=self.end)
         return self.core
