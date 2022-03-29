@@ -224,7 +224,7 @@ class RotZ(Module):
     def __init__(self, dtype=complex64, device=None):
         super().__init__()
         self.theta, self.dtype, self.device = Parameter(randn(1, device=device)), dtype, device
-
+        self.iden, self.epz = identity(dtype=dtype, device=self.theta.device), exp_pauli_z(dtype=dtype, device=self.theta.device)
 
     def forward(self):
         """Prepares the RotZ gate for forward contraction by calling the forward method
@@ -235,7 +235,7 @@ class RotZ(Module):
         -------
         Gate tensor for general forward pass.
         """
-        return tl.tensor([[[[exp(-1j*self.theta/2)],[0]],[[0],[exp(1j*self.theta/2)]]]], dtype=self.dtype, device=self.device)
+        return self.iden*cos(self.theta/2)+self.epz*sin(self.theta/2)
 
 class Rot(Module):
     """Qubit rotations about a random axis.
@@ -690,6 +690,19 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
+def exp_pauli_z(dtype=complex64, device=None):
+    """Matrix for sin(theta) component of X-axis rotation in tt-tensor form.
+
+    Parameters
+    ----------
+    device : string, device on which to run the computation.
+
+    Returns
+    -------
+    tt-tensor core, sin(theta) X-rotation component.
+    """
+    return tl.tensor([[[[-1j],[0]],[[0],[1j]]]], dtype=dtype, device=device)
+
 def core_addition(c1, c2, end=0):
     if end==0: 
         return tl.concatenate((c1, c2), axis=3)
@@ -708,48 +721,46 @@ def core_multiplication(f, core, i):
     return layers_contract([[f*core]]+[[core]*(i)], i+1)[0]
 
 class Perceptron_U(Unitary):
-    def __init__(self, nqubits_total, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
-        super().__init__([], nqubits_total, ncontraq, contrsets=contrsets, device=device)
-        gates = [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=0)]
-        gates+= [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=i) for i in range(1,nqubits_total-1)]
-        gates+= [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=-1)]
-        
-        self._set_gates(gates)
-        
+    def __init__(self, nqubits, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
+        super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=complex64, device=device)
+        self._set_gates([perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=0)]+\
+        [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=i) for i in range(1,nqubits-1)]+\
+        [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=-1)])
+
 class perceptron_U(Module):        
     def __init__(self, approx=1, dt= 0.01, Js=None, h=None, device=None, end=0): 
         super().__init__()
+        self.end, self.approx = end, approx
+        if end != -1:
+            if Js is None: self.J = Parameter(randn(1, device=device))
+            else: self.J = Parameter(t.tensor(Js[end], device=device))
+        else: 
+            if h is None: self.J = Parameter(randn(2, device=device))
+            else: self.J = Parameter(t.tensor(h, device=device))
+        
+    def forward(self):
         self.core = IDENTITY(device=device).forward()
-    
-        if end==0:
-            if Js is None: self.J=Parameter(randn(1, device=device))
-            else: self.J=Parameter(Js[end])
+        if self.end==0:
             _core = tl.zeros((1,2,2,2),  device=device, dtype=complex64)
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
             for i in range(approx):
                 f = (-1j*dt)**(i+1)/factorial(i+1)
-                self.core = core_addition(self.core,core_multiplication(f, _core, i), end=end)
-        elif end==-1:
-            if h is None: self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
-            else: self.h=Parameter(h)
+                self.core = core_addition(self.core,core_multiplication(f, _core, i), end=self.end)
+        elif self.end==-1: 
             _core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
             _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            _core[0,:,:,0]=self.h[1]*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            _core[0,:,:,0]+=self.h[0]*tl.tensor([[0,1],[1,0]], dtype=complex64, device=device)                             
-            for i in range(approx): 
-                self.core = core_addition(self.core, core_multiplication(1., _core, i), end=end)
-        else:
-            if Js is None: self.J=Parameter(randn(1, device=device))
-            else: self.J=Parameter(Js[end])
+            _core[0,:,:,0]=self.J[1]*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
+            _core[0,:,:,0]+=self.J[0]*tl.tensor([[0,1],[1,0]], dtype=complex64, device=device) 
+            for i in range(self.approx):
+                self.core = core_addition(self.core,core_multiplication(1., _core, i), end=self.end)
+        else: 
             _core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
             _core[0,:,:,0] = tl.eye(2, device=device, dtype=complex64)
             _core[1,:,:,1] = tl.eye(2, device=device, dtype=complex64)
             _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=device)
-            for i in range(approx): 
-                self.core = core_addition(self.core, core_multiplication(1., _core, i), end=end)
-
-    def forward(self): 
+            for i in range(self.approx): 
+                self.core = core_addition(self.core,core_multiplication(1., _core, i), end=self.end)
         return self.core
 
 class Perceptron_WII(Unitary):
