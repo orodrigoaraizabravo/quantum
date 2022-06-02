@@ -169,7 +169,7 @@ class RotY(Module):
         if param is None:
             self.theta = Parameter(2*pi*rand(1, device=device))
         else: 
-            self.theta= Parameter(param, device=device)
+            self.theta= Parameter(tl.tensor(param, device=device))
         self.iden, self.epy = identity(dtype=dtype, device=self.theta.device), exp_pauli_y(dtype=dtype, device=self.theta.device)
 
 
@@ -201,7 +201,7 @@ class RotX(Module):
         if param is None:
             self.theta = Parameter(2*pi*rand(1, device=device))
         else: 
-            self.theta= Parameter(param, device=device)
+            self.theta= Parameter(tl.tensor(param, device=device))
         self.iden, self.epx = identity(dtype=dtype, device=self.theta.device), exp_pauli_x(dtype=dtype, device=self.theta.device)
 
 
@@ -233,7 +233,7 @@ class RotZ(Module):
         if param is None:
             self.theta = Parameter(2*pi*rand(1, device=device))
         else: 
-            self.theta= Parameter(param, device=device)
+            self.theta= Parameter(tl.tensor(param, device=device))
         self.dtype, self.device = dtype, device
         self.iden, self.epz = identity(dtype=dtype, device=self.theta.device), exp_pauli_z(dtype=dtype, device=self.theta.device)
 
@@ -264,7 +264,7 @@ class Rot(Module):
         if param is None:
             self.theta = Parameter(2*pi*rand(3, device=device))
         else: 
-            self.theta= Parameter(param, device=device)
+            self.theta= Parameter(tl.tensor(param, device=device))
         self.dtype, self.device =  dtype, device
         
     def forward(self):
