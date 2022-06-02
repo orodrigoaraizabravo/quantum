@@ -108,6 +108,7 @@ class UnaryGatesUnitary(Unitary):
     """
     def __init__(self, nqubits, ncontraq, axis='y', contrsets=None, dtype=complex64, device=None, params=None):
         super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=dtype, device=device)
+        if params is None: params=[None]*nqubits
         if axis == 'y':
             self._set_gates([RotY(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
         elif axis == 'x':
