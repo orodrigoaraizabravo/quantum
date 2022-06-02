@@ -1,6 +1,6 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import randn, cos, sin, complex64, exp, matrix_exp, sqrt, unsqueeze
+from torch import rand, randn, cos, sin, complex64, exp, matrix_exp, sqrt, unsqueeze, pi
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
@@ -106,16 +106,16 @@ class UnaryGatesUnitary(Unitary):
     -------
     UnaryGatesUnitary
     """
-    def __init__(self, nqubits, ncontraq, axis='y', contrsets=None, dtype=complex64, device=None):
+    def __init__(self, nqubits, ncontraq, axis='y', contrsets=None, dtype=complex64, device=None, params=None):
         super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=dtype, device=device)
         if axis == 'y':
-            self._set_gates([RotY(dtype=dtype, device=device) for i in range(self.nqubits)])
+            self._set_gates([RotY(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
         elif axis == 'x':
-            self._set_gates([RotX(dtype=dtype, device=device) for i in range(self.nqubits)])
+            self._set_gates([RotX(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
         elif axis == 'z':
-            self._set_gates([RotZ(dtype=dtype, device=device) for i in range(self.nqubits)])
+            self._set_gates([RotZ(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
         else:
-            self._set_gates([Rot(dtype=dtype, device=device) for i in range(self.nqubits)])
+            self._set_gates([Rot(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
 
 
 def build_binary_gates_unitary(nqubits, q2gate, parity, random_initialization=True, dtype=complex64):
@@ -163,9 +163,12 @@ class RotY(Module):
     -------
     RotY
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex64, device=None, param=None):
         super().__init__()
-        self.theta = Parameter(randn(1, device=device))
+        if param is None:
+            self.theta = Parameter(2*pi*rand(1, device=device))
+        else: 
+            self.theta= Parameter(param, device=device)
         self.iden, self.epy = identity(dtype=dtype, device=self.theta.device), exp_pauli_y(dtype=dtype, device=self.theta.device)
 
 
@@ -192,9 +195,12 @@ class RotX(Module):
     -------
     RotX
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex64, device=None, param=None):
         super().__init__()
-        self.theta = Parameter(randn(1, device=device))
+        if param is None:
+            self.theta = Parameter(2*pi*rand(1, device=device))
+        else: 
+            self.theta= Parameter(param, device=device)
         self.iden, self.epx = identity(dtype=dtype, device=self.theta.device), exp_pauli_x(dtype=dtype, device=self.theta.device)
 
 
@@ -221,9 +227,13 @@ class RotZ(Module):
     -------
     RotZ
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex64, device=None, param=None):
         super().__init__()
-        self.theta, self.dtype, self.device = Parameter(randn(1, device=device)), dtype, device
+        if param is None:
+            self.theta = Parameter(2*pi*rand(1, device=device))
+        else: 
+            self.theta= Parameter(param, device=device)
+        self.dtype, self.device = dtype, device
         self.iden, self.epz = identity(dtype=dtype, device=self.theta.device), exp_pauli_z(dtype=dtype, device=self.theta.device)
 
     def forward(self):
@@ -248,9 +258,13 @@ class Rot(Module):
     -------
     Rotation matrix
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex64, device=None, param=None):
         super().__init__()
-        self.theta, self.dtype, self.device = Parameter(randn(3, device=device)), dtype, device
+        if param is None:
+            self.theta = Parameter(2*pi*rand(3, device=device))
+        else: 
+            self.theta= Parameter(param, device=device)
+        self.dtype, self.device =  dtype, device
         
     def forward(self):
         """
@@ -731,10 +745,10 @@ class perceptron_U(Module):
         self.dt= dt
         self.end, self.approx, self.device= end, approx, device
         if end != -1:
-            if Js is None: self.J = Parameter(randn(1, device=device))
+            if Js is None: self.J = Parameter(2*rand(1, device=device)-1)
             else: self.J = Parameter(tl.tensor(Js[end], device=device))
         else: 
-            if h is None: self.J = Parameter(randn(2, device=device))
+            if h is None: self.J = Parameter(2*rand(2, device=device)-1)
             else: self.J = Parameter(tl.tensor(h, device=device))
         
     def forward(self):
