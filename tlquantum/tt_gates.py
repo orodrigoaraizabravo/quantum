@@ -118,7 +118,21 @@ class UnaryGatesUnitary(Unitary):
         else:
             self._set_gates([Rot(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
 
-
+class PauliString(Unitary):
+    def __init__(self, nqubits, ncontraq, gatelabels=['x'], contrsets=None, dtype=complex64, device=None, params=None):
+        super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=dtype, device=device)
+        if params is None: params=[None]*nqubits
+        if len(gatelabels)==1: gatelabels = gatelabels*nqubits
+        gates =[]
+        
+        for i in range(nqubits): 
+            if gatelabels[i]=='x': gates.append(RotX(dtype=dtype, device=device, param=pi)) 
+            if gatelabels[i]=='y': gates.append(RotY(dtype=dtype, device=device, param=pi)) 
+            if gatelabels[i]=='z': gates.append(RotZ(dtype=dtype, device=device, param=pi)) 
+            if gatelabels[i]=='I': gates.append(IDENTITY(device=device)) 
+        
+        self._set_gates(gates)
+        
 def build_binary_gates_unitary(nqubits, q2gate, parity, random_initialization=True, dtype=complex64):
     """Generate a layer of two-qubit gates.
 
