@@ -763,7 +763,7 @@ class perceptron_U(Module):
             if Js is None: self.J = Parameter(pi*(2*rand(1, device=device)-1))
             else: self.J = Parameter(tl.tensor(Js[end], device=device))
         else: 
-            if h is None: self.J = Parameter(2*pi*rand(1, device=device))
+            if h is None: self.J = Parameter(2*pi*rand(2, device=device))
             else: self.J = Parameter(tl.tensor(h, device=device))
         
     def forward(self):
