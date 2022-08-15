@@ -1,6 +1,6 @@
 import tensorly as tl
 tl.set_backend('pytorch')
-from torch import rand, randn, cos, sin, complex64, exp, matrix_exp, sqrt, unsqueeze, pi
+from torch import rand, randn, cos, sin, complex128, exp, matrix_exp, sqrt, unsqueeze, pi
 from torch.nn import Module, ModuleList, ParameterList, Parameter
 from tensorly.tt_matrix import TTMatrix
 from copy import deepcopy
@@ -39,7 +39,7 @@ class Unitary(Module):
     -------
     Unitary
     """
-    def __init__(self, gates, nqubits, ncontraq, contrsets=None, dtype=complex64, device=None):
+    def __init__(self, gates, nqubits, ncontraq, contrsets=None, dtype=complex128, device=None):
         super().__init__()
         if contrsets is None:
             contrsets = _get_contrsets(nqubits, ncontraq)
@@ -106,7 +106,7 @@ class UnaryGatesUnitary(Unitary):
     -------
     UnaryGatesUnitary
     """
-    def __init__(self, nqubits, ncontraq, axis='y', contrsets=None, dtype=complex64, device=None, params=None):
+    def __init__(self, nqubits, ncontraq, axis='y', contrsets=None, dtype=complex128, device=None, params=None):
         super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=dtype, device=device)
         if params is None: params=[None]*nqubits
         if axis == 'y':
@@ -119,7 +119,7 @@ class UnaryGatesUnitary(Unitary):
             self._set_gates([Rot(dtype=dtype, device=device, param=params[i]) for i in range(self.nqubits)])
 
 class PauliString(Unitary):
-    def __init__(self, nqubits, ncontraq, gatelabels=['x'], contrsets=None, dtype=complex64, device=None, params=None):
+    def __init__(self, nqubits, ncontraq, gatelabels=['x'], contrsets=None, dtype=complex128, device=None, params=None):
         super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=dtype, device=device)
         if params is None: params=[None]*nqubits
         if len(gatelabels)==1: gatelabels = gatelabels*nqubits
@@ -133,7 +133,7 @@ class PauliString(Unitary):
         
         self._set_gates(gates)
         
-def build_binary_gates_unitary(nqubits, q2gate, parity, random_initialization=True, dtype=complex64):
+def build_binary_gates_unitary(nqubits, q2gate, parity, random_initialization=True, dtype=complex128):
     """Generate a layer of two-qubit gates.
 
     Parameters
@@ -178,7 +178,7 @@ class RotY(Module):
     -------
     RotY
     """
-    def __init__(self, dtype=complex64, device=None, param=None):
+    def __init__(self, dtype=complex128, device=None, param=None):
         super().__init__()
         if param is None:
             self.theta = Parameter(2*pi*rand(1, device=device))
@@ -210,7 +210,7 @@ class RotX(Module):
     -------
     RotX
     """
-    def __init__(self, dtype=complex64, device=None, param=None):
+    def __init__(self, dtype=complex128, device=None, param=None):
         super().__init__()
         if param is None:
             self.theta = Parameter(2*pi*rand(1, device=device))
@@ -242,7 +242,7 @@ class RotZ(Module):
     -------
     RotZ
     """
-    def __init__(self, dtype=complex64, device=None, param=None):
+    def __init__(self, dtype=complex128, device=None, param=None):
         super().__init__()
         if param is None:
             self.theta = Parameter(2*pi*rand(1, device=device))
@@ -273,7 +273,7 @@ class Rot(Module):
     -------
     Rotation matrix
     """
-    def __init__(self, dtype=complex64, device=None, param=None):
+    def __init__(self, dtype=complex128, device=None, param=None):
         super().__init__()
         if param is None:
             self.theta = Parameter(2*pi*rand(3, device=device))
@@ -305,7 +305,7 @@ class IDENTITY(Module):
     -------
     IDENTITY
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex128, device=None):
         super().__init__()
         self.core, self.dtype, self.device = identity(dtype=dtype, device=device), dtype, device
 
@@ -321,7 +321,7 @@ class IDENTITY(Module):
         return self.core
 
 
-def cnot(dtype=complex64, device=None):
+def cnot(dtype=complex128, device=None):
     """Pair of CNOT class instances, one left (control) and one right (transformed).
 
     Parameters
@@ -346,7 +346,7 @@ class CNOTL(Module):
     -------
     Left core of CNOT gate.
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex128, device=None):
         super().__init__()
         core, self.dtype, self.device = tl.zeros((1,2,2,2), dtype=dtype, device=device), dtype, device
         core[0,0,0,0] = core[0,1,1,1] = 1.
@@ -379,7 +379,7 @@ class CNOTR(Module):
     -------
     Right core of CNOT gate.
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex128, device=None):
         super().__init__()
         core, self.dtype, self.device = tl.zeros((2,2,2,1), dtype=dtype, device=device), dtype, device
         core[0,0,0,0] = core[0,1,1,0] = 1.
@@ -402,7 +402,7 @@ class CNOTR(Module):
         pass
 
 
-def cz(dtype=complex64, device=None):
+def cz(dtype=complex128, device=None):
     """Pair of CZ class instances, one left (control) and one right (transformed).
 
     Parameters
@@ -427,7 +427,7 @@ class CZL(Module):
     -------
     Left core of CZ gate.
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex128, device=None):
         super().__init__()
         core, self.dtype, self.device = tl.zeros((1,2,2,2), dtype=dtype, device=device), dtype, device
         core[0,0,0,0] = core[0,1,1,1] = 1.
@@ -460,7 +460,7 @@ class CZR(Module):
     -------
     Right core of CZ gate.
     """
-    def __init__(self, dtype=complex64, device=None):
+    def __init__(self, dtype=complex128, device=None):
         super().__init__()
         core, self.dtype, self.device = tl.zeros((2,2,2,1), dtype=dtype, device=device), dtype, device
         core[0,0,0,0] = core[0,1,1,0] = core[1,0,0,0]  = 1.
@@ -482,7 +482,7 @@ class CZR(Module):
         pass
 
 
-def so4(state1, state2, dtype=complex64, device=None):
+def so4(state1, state2, dtype=complex128, device=None):
     """Pair of SO4 two-qubit rotation class instances, with rotations over
     different states.
 
@@ -515,7 +515,7 @@ class SO4LR(Module):
     if position == 0 --> SO4L
     if position == 1 --> SO4R
     """
-    def __init__(self, state1, state2, position, theta=None, dtype=complex64, device=None):
+    def __init__(self, state1, state2, position, theta=None, dtype=complex128, device=None):
         super().__init__()
         self.theta, self.position, self.dtype, self.device = Parameter(randn(1, device=device)), position, dtype, device
         if theta is not None:
@@ -548,7 +548,7 @@ class SO4LR(Module):
         self.theta.data = randn(1, device=self.device)
 
 
-def _so4_01(theta, dtype=complex64, device=None):
+def _so4_01(theta, dtype=complex128, device=None):
     """Two-qubit SO4 gates in tt-tensor form with rotations along zeroth and first
     qubit states.
 
@@ -574,7 +574,7 @@ def _so4_01(theta, dtype=complex64, device=None):
     return [*tt_matrix_sum(TTMatrix(T01I), tt_matrix_sum(TTMatrix(T23I), TTMatrix(R23I)))]
 
 
-def _so4_12(theta, dtype=complex64, device=None):
+def _so4_12(theta, dtype=complex128, device=None):
     """Two-qubit SO4 gates in tt-tensor form with rotations along first and second
     qubit states.
 
@@ -600,7 +600,7 @@ def _so4_12(theta, dtype=complex64, device=None):
     return [*tt_matrix_sum(TTMatrix(T03I), tt_matrix_sum(TTMatrix(T12I), TTMatrix(R12I)))]
 
 
-def _so4_23(theta, dtype=complex64, device=None):
+def _so4_23(theta, dtype=complex128, device=None):
     """Two-qubit SO4 gates in tt-tensor form with rotations along second and third
     qubit states.
 
@@ -626,7 +626,7 @@ def _so4_23(theta, dtype=complex64, device=None):
     return [*tt_matrix_sum(TTMatrix(T23I), tt_matrix_sum(TTMatrix(T01I), TTMatrix(R01I)))]
 
 
-def o4_phases(phases=None, dtype=complex64, device=None):
+def o4_phases(phases=None, dtype=complex128, device=None):
     """Pair of O4 phase rotations class instances. Each of four phases
     is imparted to each of the 4 states of O4.
 
@@ -656,7 +656,7 @@ class O4LR(Module):
     -------
     Two-qubit unitary with general phase rotations for O4.
     """
-    def __init__(self, position, phases=None, dtype=complex64, device=None):
+    def __init__(self, position, phases=None, dtype=complex128, device=None):
         super().__init__()
         self.phases = [Parameter(randn(1, device=device)), Parameter(randn(1, device=device)), Parameter(randn(1, device=device)), Parameter(randn(1, device=device))]
         self.position, self.dtype, self.device = position, dtype, device
@@ -691,7 +691,7 @@ class O4LR(Module):
             phase.data = randn(1, device=self.device)
 
 
-def exp_pauli_y(dtype=complex64, device=None):
+def exp_pauli_y(dtype=complex128, device=None):
     """Matrix for sin(theta) component of Y-axis rotation in tt-tensor form.
     Parameters
     ----------
@@ -704,7 +704,7 @@ def exp_pauli_y(dtype=complex64, device=None):
     return tl.tensor([[[[0],[-1]],[[1],[0]]]], dtype=dtype, device=device)
 
 
-def exp_pauli_x(dtype=complex64, device=None):
+def exp_pauli_x(dtype=complex128, device=None):
     """Matrix for sin(theta) component of X-axis rotation in tt-tensor form.
 
     Parameters
@@ -717,7 +717,7 @@ def exp_pauli_x(dtype=complex64, device=None):
     """
     return tl.tensor([[[[0],[-1j]],[[-1j],[0]]]], dtype=dtype, device=device)
 
-def exp_pauli_z(dtype=complex64, device=None):
+def exp_pauli_z(dtype=complex128, device=None):
     """Matrix for sin(theta) component of X-axis rotation in tt-tensor form.
 
     Parameters
@@ -749,7 +749,7 @@ def core_multiplication(f, core, i):
 
 class Perceptron_U(Unitary):
     def __init__(self, nqubits, ncontraq, approx, dt=0.01, contrsets=None, device=None, Js=None, h=None):
-        super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=complex64, device=device)
+        super().__init__([], nqubits, ncontraq, contrsets=contrsets, dtype=complex128, device=device)
         self._set_gates([perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=0)]+\
         [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=i) for i in range(1,nqubits-1)]+\
         [perceptron_U(approx=approx,dt=dt,device=device,Js=Js, h=h, end=-1)])
@@ -769,24 +769,24 @@ class perceptron_U(Module):
     def forward(self):
         self.core = IDENTITY(device=self.device).forward()
         if self.end==0:
-            _core = tl.zeros((1,2,2,2),  device=self.device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=self.device, dtype=complex64)
-            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            _core = tl.zeros((1,2,2,2),  device=self.device, dtype=complex128)
+            _core[0,:,:,0] = tl.eye(2, device=self.device, dtype=complex128)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex128, device=self.device)
             for i in range(self.approx):
                 f = (-1j*self.dt)**(i+1)/factorial(i+1)
                 self.core = core_addition(self.core,core_multiplication(f, _core, i), end=self.end)
         elif self.end==-1: 
-            _core = tl.zeros((2,2,2,1), device=self.device, dtype=complex64)
-            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
-            _core[0,:,:,0]=self.J[1]*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
-            _core[0,:,:,0]+=self.J[0]*tl.tensor([[0,1],[1,0]], dtype=complex64, device=self.device) 
+            _core = tl.zeros((2,2,2,1), device=self.device, dtype=complex128)
+            _core[1,:,:,0]=tl.tensor([[1,0],[0,-1]], dtype=complex128, device=self.device)
+            _core[0,:,:,0]=self.J[1]*tl.tensor([[1,0],[0,-1]], dtype=complex128, device=self.device)
+            _core[0,:,:,0]+=self.J[0]*tl.tensor([[0,1],[1,0]], dtype=complex128, device=self.device) 
             for i in range(self.approx):
                 self.core = core_addition(self.core,core_multiplication(1., _core, i), end=self.end)
         else: 
-            _core = tl.zeros((2,2,2,2), device=self.device, dtype=complex64)
-            _core[0,:,:,0] = tl.eye(2, device=self.device, dtype=complex64)
-            _core[1,:,:,1] = tl.eye(2, device=self.device, dtype=complex64)
-            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            _core = tl.zeros((2,2,2,2), device=self.device, dtype=complex128)
+            _core[0,:,:,0] = tl.eye(2, device=self.device, dtype=complex128)
+            _core[1,:,:,1] = tl.eye(2, device=self.device, dtype=complex128)
+            _core[0,:,:,1] = self.J*tl.tensor([[1,0],[0,-1]], dtype=complex128, device=self.device)
             for i in range(self.approx): 
                 self.core = core_addition(self.core,core_multiplication(1., _core, i), end=self.end)
         return self.core
@@ -833,9 +833,9 @@ class star_wII(Module):
         to how the input qubit in question interacts with the output.'''
         super().__init__()
         self.end, self.device = end, device
-        self.b  = tl.tensor([[0, 0], [1, 0]], dtype=complex64, device=device)
-        self.I2 = tl.eye(2, dtype=complex64, device=device)
-        self.I4 = tl.eye(4, dtype=complex64, device=device)
+        self.b  = tl.tensor([[0, 0], [1, 0]], dtype=complex128, device=device)
+        self.I2 = tl.eye(2, dtype=complex128, device=device)
+        self.I4 = tl.eye(4, dtype=complex128, device=device)
         self.Bc = tl.kron(self.I2, self.b)
         self.Br = tl.kron(self.b,self.I2)
         self.Brc = tl.kron(self.b,self.b)
@@ -844,16 +844,16 @@ class star_wII(Module):
         if end==0:
             if j0 is None: self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(j0)
-            self.core = tl.zeros((1,2,2,2), device=device, dtype=complex64)
+            self.core = tl.zeros((1,2,2,2), device=device, dtype=complex128)
         elif end is None:
             if j0 is None:self.J = Parameter(randn(1, device=device))
             else: self.J = Parameter(j0)
-            self.core = tl.zeros((2,2,2,2), device=device, dtype=complex64)
+            self.core = tl.zeros((2,2,2,2), device=device, dtype=complex128)
         elif end==1: 
             if h0 is None:
                 self.h=Parameter(randn(2, device=device)) #h[0]=O, h[1]=D
             else: self.h=Parameter(h0)
-            self.core = tl.zeros((2,2,2,1), device=device, dtype=complex64)
+            self.core = tl.zeros((2,2,2,1), device=device, dtype=complex128)
         else: raise ValueError('End {} not supported'.format(self.end)) 
         
         self.prepare_core()
@@ -866,13 +866,13 @@ class star_wII(Module):
         tc= (1+1j)*sqrt(self.dt/2)
         tb= (1-1j)*sqrt(self.dt/2)
         if self.end !=1:
-            Dm=tl.zeros([2,2], dtype=complex64, device=self.device)
+            Dm=tl.zeros([2,2], dtype=complex128, device=self.device)
             Bm=Dm
-            Cm=self.J*tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            Cm=self.J*tl.tensor([[1,0],[0,-1]], dtype=complex128, device=self.device)
         else: 
-            Dm=tl.tensor([[self.h[1],self.h[0]], [self.h[0],-self.h[1]]], dtype=complex64, device=self.device)
-            Cm=tl.zeros([2,2], dtype=complex64, device=self.device)
-            Bm=tl.tensor([[1,0],[0,-1]], dtype=complex64, device=self.device)
+            Dm=tl.tensor([[self.h[1],self.h[0]], [self.h[0],-self.h[1]]], dtype=complex128, device=self.device)
+            Cm=tl.zeros([2,2], dtype=complex128, device=self.device)
+            Bm=tl.tensor([[1,0],[0,-1]], dtype=complex128, device=self.device)
         
         w=matrix_exp(tl.kron(self.Brc,self.I2)+tb*tl.kron(self.Br, Bm)\
                      +tc*tl.kron(self.Bc, Cm)+tau*tl.kron(self.I4, Dm)).reshape([2]*6)
